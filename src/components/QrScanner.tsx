@@ -34,8 +34,14 @@ export function QrScanner({ onRead }: Props) {
         const codeReader = new BrowserMultiFormatReader();
         codeReaderRef.current = codeReader;
 
-        await codeReader.decodeFromVideoDevice(
-          undefined,
+        const controls = await codeReader.decodeFromConstraints(
+          {
+            video: {
+              facingMode: { ideal: "environment" },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          },
           video,
           (result, err) => {
             if (result) {
@@ -56,7 +62,10 @@ export function QrScanner({ onRead }: Props) {
           }
         );
 
+        if (state !== "ready") setState("ready");
+
         stopRef.current = () => {
+          controls?.stop?.();
           (codeReader as any).reset?.();
         };
       } catch (err) {
