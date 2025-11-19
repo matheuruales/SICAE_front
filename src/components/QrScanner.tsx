@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import jsQR from "jsqr";
 
 type Props = {
   onRead: (value: string) => void;
@@ -24,15 +25,18 @@ export function QrScanner({ onRead }: Props) {
     let stream: MediaStream | null = null;
     let running = true;
     let detector: typeof BarcodeDetector.prototype | null = null;
+    const hasBarcodeDetector = typeof BarcodeDetector !== "undefined";
 
     async function startScanner() {
-      if (typeof BarcodeDetector === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      if (!navigator.mediaDevices?.getUserMedia) {
         setState("unsupported");
         return;
       }
 
       try {
-        detector = new BarcodeDetector({ formats: ["qr_code"] });
+        if (hasBarcodeDetector) {
+          detector = new BarcodeDetector({ formats: ["qr_code"] });
+        }
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
         if (!videoRef.current) return;
         videoRef.current.srcObject = stream;
@@ -49,7 +53,7 @@ export function QrScanner({ onRead }: Props) {
         setState("ready");
 
         const tick = async () => {
-          if (!running || !videoRef.current || !canvasRef.current || !detector) return;
+          if (!running || !videoRef.current || !canvasRef.current) return;
           const video = videoRef.current;
           if (video.videoWidth === 0 || video.videoHeight === 0) {
             requestAnimationFrame(tick);
@@ -65,14 +69,28 @@ export function QrScanner({ onRead }: Props) {
           }
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           try {
-            const codes = await detector.detect(canvas);
-            if (codes.length > 0) {
-              const now = Date.now();
-              const code = codes[0].rawValue;
-              if (code !== lastCodeRef.current || now - lastScanTimeRef.current > 3000) {
-                lastCodeRef.current = code;
-                lastScanTimeRef.current = now;
-                onRead(code);
+            if (detector) {
+              const codes = await detector.detect(canvas);
+              if (codes.length > 0) {
+                const now = Date.now();
+                const code = codes[0].rawValue;
+                if (code !== lastCodeRef.current || now - lastScanTimeRef.current > 3000) {
+                  lastCodeRef.current = code;
+                  lastScanTimeRef.current = now;
+                  onRead(code);
+                }
+              }
+            } else {
+              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              const result = jsQR(imageData.data, imageData.width, imageData.height);
+              if (result?.data) {
+                const now = Date.now();
+                const code = result.data;
+                if (code !== lastCodeRef.current || now - lastScanTimeRef.current > 3000) {
+                  lastCodeRef.current = code;
+                  lastScanTimeRef.current = now;
+                  onRead(code);
+                }
               }
             }
           } catch (err) {
