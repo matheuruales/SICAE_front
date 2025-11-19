@@ -6,6 +6,7 @@ export function LectorPage() {
   const { validarQr, puntos, status, user } = useSicae();
   const [puntoAccesoId, setPuntoAccesoId] = useState("");
   const [ipLector, setIpLector] = useState("");
+  const [manual, setManual] = useState("");
 
   const onRead = useCallback(
     (code: string) => {
@@ -56,6 +57,29 @@ export function LectorPage() {
               onChange={(e) => setIpLector(e.target.value)}
               placeholder="10.0.0.12"
             />
+          </label>
+
+          <label>
+            Ingreso manual de QR
+            <div className="grid" style={{ gridTemplateColumns: "1fr auto", gap: "0.5rem" }}>
+              <input
+                value={manual}
+                onChange={(e) => setManual(e.target.value)}
+                placeholder="Pega el código QR"
+              />
+              <button
+                type="button"
+                className="primary"
+                onClick={() => {
+                  const value = manual.trim();
+                  if (!value) return;
+                  onRead(value);
+                  setManual("");
+                }}
+              >
+                Validar
+              </button>
+            </div>
           </label>
 
           {status && <p className="muted small">{status}</p>}
