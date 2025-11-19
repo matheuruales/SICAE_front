@@ -25,7 +25,7 @@ export function AuthPage() {
 
   return (
     <div className="auth-layout">
-      <div className="panel auth">
+      <div className="panel auth-card">
         <div className="panel-title">SICAE · Control de Accesos</div>
         <p className="muted small">Ingresa con tu correo y contraseña.</p>
 
