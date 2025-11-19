@@ -7,12 +7,6 @@ type Props = {
 
 type DetectorState = "pending" | "ready" | "unsupported";
 
-declare const BarcodeDetector: {
-  new (options?: { formats?: string[] }): {
-    detect: (image: CanvasImageSource) => Promise<{ rawValue: string }[]>;
-  };
-};
-
 export function QrScanner({ onRead }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -24,78 +18,81 @@ export function QrScanner({ onRead }: Props) {
   useEffect(() => {
     let stream: MediaStream | null = null;
     let running = true;
-    let detector: typeof BarcodeDetector.prototype | null = null;
-    const hasBarcodeDetector = typeof BarcodeDetector !== "undefined";
 
     async function startScanner() {
-      if (!navigator.mediaDevices?.getUserMedia) {
+      // Proteger por si se ejecuta en SSR (Next.js) o navegador raro
+      if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
         setState("unsupported");
         return;
       }
 
       try {
-        if (hasBarcodeDetector) {
-          detector = new BarcodeDetector({ formats: ["qr_code"] });
-        }
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
-        if (!videoRef.current) return;
-        videoRef.current.srcObject = stream;
+        // Pedir cámara trasera si existe
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+        });
 
+        const video = videoRef.current;
+        if (!video) return;
+
+        video.srcObject = stream;
+
+        // Esperar a que el video tenga metadata
         await new Promise<void>((resolve) => {
-          if (!videoRef.current) return resolve();
-          const video = videoRef.current;
           if (video.readyState >= 2) return resolve();
           video.onloadedmetadata = () => resolve();
         });
 
-        if (!videoRef.current) return;
-        await videoRef.current.play();
+        await video.play();
         setState("ready");
 
-        const tick = async () => {
-          if (!running || !videoRef.current || !canvasRef.current) return;
+        const tick = () => {
+          if (!running) return;
+
           const video = videoRef.current;
+          const canvas = canvasRef.current;
+          if (!video || !canvas) {
+            requestAnimationFrame(tick);
+            return;
+          }
+
+          // Si aún no está listo el video, seguir esperando
           if (video.videoWidth === 0 || video.videoHeight === 0) {
             requestAnimationFrame(tick);
             return;
           }
-          const canvas = canvasRef.current;
+
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
+
           const ctx = canvas.getContext("2d");
           if (!ctx) {
             requestAnimationFrame(tick);
             return;
           }
+
+          // Dibujar frame actual del video
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
           try {
-            if (detector) {
-              const codes = await detector.detect(canvas);
-              if (codes.length > 0) {
-                const now = Date.now();
-                const code = codes[0].rawValue;
-                if (code !== lastCodeRef.current || now - lastScanTimeRef.current > 3000) {
-                  lastCodeRef.current = code;
-                  lastScanTimeRef.current = now;
-                  onRead(code);
-                }
-              }
-            } else {
-              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              const result = jsQR(imageData.data, imageData.width, imageData.height);
-              if (result?.data) {
-                const now = Date.now();
-                const code = result.data;
-                if (code !== lastCodeRef.current || now - lastScanTimeRef.current > 3000) {
-                  lastCodeRef.current = code;
-                  lastScanTimeRef.current = now;
-                  onRead(code);
-                }
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const result = jsQR(imageData.data, imageData.width, imageData.height);
+
+            if (result?.data) {
+              const now = Date.now();
+              const code = result.data;
+
+              // Evitar disparar el mismo código muchas veces seguidas
+              if (code !== lastCodeRef.current || now - lastScanTimeRef.current > 3000) {
+                lastCodeRef.current = code;
+                lastScanTimeRef.current = now;
+                onRead(code);
               }
             }
           } catch (err) {
-            console.error(err);
+            console.error("Error leyendo QR:", err);
           }
+
           requestAnimationFrame(tick);
         };
 
@@ -117,15 +114,30 @@ export function QrScanner({ onRead }: Props) {
     };
   }, [onRead]);
 
+  const handleManualSubmit = () => {
+    const value = manual.trim();
+    if (!value) return;
+    lastCodeRef.current = value;
+    lastScanTimeRef.current = Date.now();
+    onRead(value);
+  };
+
   return (
     <div className="panel">
       <div className="panel-title">Lector de QR (credencial única)</div>
       <p className="muted small">
         Se usa como única credencial: apunte la cámara al código generado o ingréselo manualmente.
       </p>
+
       {state === "ready" ? (
         <div className="scanner">
-          <video ref={videoRef} muted playsInline className="video-feed" />
+          <video
+            ref={videoRef}
+            muted
+            playsInline
+            // opcionalmente, autoPlay (aunque ya llamamos a play() en el código)
+            className="video-feed"
+          />
           <div className="scan-overlay">
             <div className="scan-box" />
             <p className="muted small center">Alinea el QR dentro del cuadro</p>
@@ -137,14 +149,16 @@ export function QrScanner({ onRead }: Props) {
           <p className="muted small">
             {state === "pending"
               ? "Activando cámara..."
-              : "Este navegador no expone BarcodeDetector. Usa ingreso manual."}
+              : "No se pudo acceder a la cámara. Usa el ingreso manual del código."}
           </p>
           <input
             value={manual}
             onChange={(e) => setManual(e.target.value)}
             placeholder="Pega aquí el QR leído"
           />
-          <button onClick={() => manual && onRead(manual)}>Validar código</button>
+          <button type="button" onClick={handleManualSubmit}>
+            Validar código
+          </button>
         </div>
       )}
     </div>
