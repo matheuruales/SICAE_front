@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useSicae } from "../context/SicaeContext";
-import type { Rol } from "../types";
+import type { Rol, TipoPersona } from "../types";
 
 export function UsuariosPage() {
   const { usuarios, user, registrarUsuario } = useSicae();
@@ -10,6 +10,12 @@ export function UsuariosPage() {
     correo: "",
     password: "",
     rol: "ADMIN" as Rol,
+    documento: "",
+    tipoPersona: "EMPLEADO" as TipoPersona,
+    telefono: "",
+    empresa: "",
+    personaContacto: "",
+    motivoVisita: "",
   });
 
   if (user?.rol !== "ADMIN") {
@@ -29,7 +35,7 @@ export function UsuariosPage() {
   return (
     <div className="grid two-columns">
       <div className="panel">
-        <div className="panel-title">Registrar nuevo usuario</div>
+        <div className="panel-title">Registrar nuevo usuario + persona</div>
         <form className="grid" onSubmit={handleSubmit}>
           <label>
             Nombre completo
@@ -42,6 +48,15 @@ export function UsuariosPage() {
           <label>
             Correo
             <input required type="email" value={form.correo} onChange={(e) => setForm({ ...form, correo: e.target.value })} />
+          </label>
+          <label>
+            Documento
+            <input
+              required
+              value={form.documento}
+              onChange={(e) => setForm({ ...form, documento: e.target.value })}
+              placeholder="Identificador único"
+            />
           </label>
           <label>
             Contraseña
@@ -60,11 +75,40 @@ export function UsuariosPage() {
               <option value="VISITANTE">Visitante</option>
             </select>
           </label>
+          <label>
+            Tipo de persona
+            <select
+              value={form.tipoPersona}
+              onChange={(e) => setForm({ ...form, tipoPersona: e.target.value as TipoPersona })}
+            >
+              <option value="EMPLEADO">Empleado</option>
+              <option value="VISITANTE">Visitante</option>
+              <option value="CONTRATISTA">Contratista</option>
+            </select>
+          </label>
+          <label>
+            Teléfono
+            <input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
+          </label>
+          <label>
+            Empresa / Área
+            <input value={form.empresa} onChange={(e) => setForm({ ...form, empresa: e.target.value })} />
+          </label>
+          <label>
+            Contacto / Motivo
+            <input
+              value={form.motivoVisita}
+              onChange={(e) => setForm({ ...form, motivoVisita: e.target.value })}
+              placeholder="Motivo o persona de contacto"
+            />
+          </label>
           <button className="primary" type="submit">
             Crear usuario
           </button>
         </form>
-        <p className="muted small">El registro pide credenciales básicas y rol.</p>
+        <p className="muted small">
+          El registro ahora crea al usuario y su persona asociada en un solo paso para mantener la relación 1 a 1.
+        </p>
       </div>
 
       <div className="panel">

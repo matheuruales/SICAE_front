@@ -10,12 +10,15 @@ export function CredencialesPage() {
 
   // Para roles que solo pueden generar su propio QR, autoselecciona la primera persona disponible
   useEffect(() => {
-    if (user && user.rol !== "ADMIN" && user.rol !== "SEGURIDAD") {
-      if (personas.length > 0) {
-        setPersonaSeleccionada(personas[0].id);
-      }
+    if (personaSeleccionada) return;
+    if (user?.personaId) {
+      setPersonaSeleccionada(user.personaId);
+      return;
     }
-  }, [user, personas]);
+    if (personas.length > 0) {
+      setPersonaSeleccionada(personas[0].id);
+    }
+  }, [user?.personaId, personas, personaSeleccionada]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

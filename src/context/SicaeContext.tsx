@@ -14,10 +14,10 @@ import type {
   Persona,
   PuntoAcceso,
   Rol,
+  TipoPersona,
   UsuarioListado,
 } from "../types";
 import {
-  crearPersona,
   generarQr,
   listarCredenciales,
   listarEventos,
@@ -44,11 +44,21 @@ type SicaeContextType = {
   authenticate: (params: { correo: string; password: string }) => Promise<void>;
   logout: () => void;
   refreshData: () => Promise<void>;
-  crearPersona: (data: Parameters<typeof crearPersona>[0]) => Promise<void>;
-  emitirQr: (personaId: string) => Promise<Credencial | null>;
+  emitirQr: (personaId?: string) => Promise<Credencial | null>;
   validarQr: (code: string, puntoAccesoId?: string, ipLector?: string) => Promise<EventoAcceso | null>;
   crearPunto: (data: { nombre: string; ubicacion: string; tipo: string; activo: boolean }) => Promise<void>;
-  registrarUsuario: (data: { nombreCompleto: string; correo: string; password: string; rol: Rol }) => Promise<void>;
+  registrarUsuario: (data: {
+    nombreCompleto: string;
+    correo: string;
+    password: string;
+    rol: Rol;
+    documento: string;
+    tipoPersona: TipoPersona;
+    telefono?: string;
+    empresa?: string;
+    personaContacto?: string;
+    motivoVisita?: string;
+  }) => Promise<void>;
 };
 
 const SicaeContext = createContext<SicaeContextType | undefined>(undefined);
@@ -125,19 +135,19 @@ export function SicaeProvider({ children }: { children: ReactNode }) {
         listarPuntos(token),
       ]);
       const personasFiltered =
-        user && user.rol !== "ADMIN" && user.rol !== "SEGURIDAD"
+        user && user.rol !== "ADMIN" && user.rol !== "SEGURIDAD" && user.personaId
           ? personasRes.filter((p) => p.id === user.personaId)
           : personasRes;
       setPersonas(personasFiltered);
 
       const credsFiltered =
-        user && user.rol !== "ADMIN" && user.rol !== "SEGURIDAD"
+        user && user.rol !== "ADMIN" && user.rol !== "SEGURIDAD" && user.personaId
           ? credencialesRes.filter((c) => c.personaId === user.personaId)
           : credencialesRes;
       setCredenciales(credsFiltered);
 
       setEventos(
-        user && user.rol !== "ADMIN" && user.rol !== "SEGURIDAD"
+        user && user.rol !== "ADMIN" && user.rol !== "SEGURIDAD" && user.personaId
           ? eventosRes.filter((e) => e.personaId === user.personaId)
           : eventosRes
       );
@@ -153,31 +163,18 @@ export function SicaeProvider({ children }: { children: ReactNode }) {
     }
   }, [token, user]);
 
-  const crearPersonaAction: SicaeContextType["crearPersona"] = useCallback(
-    async (data) => {
-      if (!token) return;
-      setLoading(true);
-      setStatus(null);
-      try {
-        const persona = await crearPersona(data, token);
-        setPersonas((prev) => [...prev, persona]);
-        setStatus("Persona registrada.");
-      } catch (err) {
-        setStatus((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [token]
-  );
-
   const emitirQr: SicaeContextType["emitirQr"] = useCallback(
     async (personaId) => {
       if (!token) return null;
+      const objetivo = personaId ?? user?.personaId;
+      if (!objetivo) {
+        setStatus("No se encontró una persona vinculada para generar el QR.");
+        return null;
+      }
       setStatus(null);
       setLoading(true);
       try {
-        const cred = await generarQr(personaId, token);
+        const cred = await generarQr(objetivo, token);
         setCredenciales((prev) => [...prev, cred]);
         setStatus("Código QR emitido (1 minuto de vigencia por defecto).");
         return cred;
@@ -188,7 +185,7 @@ export function SicaeProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [token]
+    [token, user?.personaId]
   );
 
   const validarQrAction: SicaeContextType["validarQr"] = useCallback(async (code, puntoAccesoId, ipLector) => {
@@ -227,16 +224,26 @@ export function SicaeProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setStatus(null);
       try {
-        const nuevo = await register(data.nombreCompleto, data.correo, data.password, data.rol);
-        setUsuarios((prev) => [...prev, nuevo]);
-        setStatus("Usuario creado.");
+        const nuevo = await register(data);
+        setUsuarios((prev) => [
+          ...prev,
+          {
+            usuarioId: nuevo.usuarioId,
+            nombreCompleto: nuevo.nombreCompleto,
+            correo: nuevo.correo,
+            rol: nuevo.rol,
+            personaId: nuevo.personaId,
+          },
+        ]);
+        await refreshData();
+        setStatus("Usuario y persona creados.");
       } catch (err) {
         setStatus((err as Error).message);
       } finally {
         setLoading(false);
       }
     },
-    []
+    [refreshData]
   );
 
   const value = useMemo(
@@ -254,7 +261,6 @@ export function SicaeProvider({ children }: { children: ReactNode }) {
       authenticate,
       logout,
       refreshData,
-      crearPersona: crearPersonaAction,
       emitirQr,
       validarQr: validarQrAction,
       crearPunto: crearPuntoAction,
@@ -274,7 +280,6 @@ export function SicaeProvider({ children }: { children: ReactNode }) {
       authenticate,
       logout,
       refreshData,
-      crearPersonaAction,
       emitirQr,
       validarQrAction,
       crearPuntoAction,

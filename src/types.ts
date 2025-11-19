@@ -90,4 +90,5 @@ export interface UsuarioListado {
   nombreCompleto: string;
   correo: string;
   rol: Rol;
+  personaId?: string | null;
 }

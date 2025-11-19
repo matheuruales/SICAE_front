@@ -17,10 +17,21 @@ export async function login(correo: string, password: string) {
   });
 }
 
-export async function register(nombreCompleto: string, correo: string, password: string, rol: Rol) {
+export async function register(data: {
+  nombreCompleto: string;
+  correo: string;
+  password: string;
+  rol: Rol;
+  documento: string;
+  tipoPersona: TipoPersona;
+  telefono?: string;
+  empresa?: string;
+  personaContacto?: string;
+  motivoVisita?: string;
+}) {
   return apiFetch<AuthResponse>("/auth/register", {
     method: "POST",
-    body: JSON.stringify({ nombreCompleto, correo, password, rol }),
+    body: JSON.stringify(data),
   });
 }
 
@@ -54,7 +65,7 @@ export async function listarPersonas(token: string) {
   return apiFetch<Persona[]>("/personas", {}, token);
 }
 
-export async function generarQr(personaId: string, token: string) {
+export async function generarQr(personaId: string | undefined, token: string) {
   return apiFetch<Credencial>(
     "/credenciales/qr",
     { method: "POST", body: JSON.stringify({ personaId }) },

@@ -1,105 +1,49 @@
-import type { FormEvent } from "react";
-import { useState } from "react";
 import { useSicae } from "../context/SicaeContext";
 import type { TipoPersona } from "../types";
 
-const tipoPersonaLabels: Record<TipoPersona, string> = {
-  EMPLEADO: "Empleado",
-  VISITANTE: "Visitante",
-  CONTRATISTA: "Contratista",
-};
-
 export function PersonasPage() {
-  const { personas, crearPersona, loading, user } = useSicae();
-  const [form, setForm] = useState({
-    nombreCompleto: "",
-    documento: "",
-    telefono: "",
-    tipo: "VISITANTE" as TipoPersona,
-    empresa: "",
-    personaContacto: "",
-    motivoVisita: "",
-  });
+  const { personas, user } = useSicae();
 
-  if (user?.rol !== "ADMIN") {
+  const tipoPersonaLabels: Record<TipoPersona, string> = {
+    EMPLEADO: "Empleado",
+    VISITANTE: "Visitante",
+    CONTRATISTA: "Contratista",
+  };
+
+  if (!user) {
+    return null;
+  }
+
+  if (user.rol !== "ADMIN" && user.rol !== "SEGURIDAD") {
     return (
       <div className="panel">
         <div className="panel-title">Acceso restringido</div>
-        <p className="muted small">Solo los administradores pueden registrar personas.</p>
+        <p className="muted small">Solo Seguridad o Administrador pueden revisar las personas del sistema.</p>
       </div>
     );
   }
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    crearPersona(form);
-  };
-
   return (
-    <div className="grid two-columns">
-      <div className="panel">
-        <div className="panel-title">Registrar persona</div>
-        <form className="grid" onSubmit={handleSubmit}>
-          <label>
-            Nombre completo
-            <input
-              required
-              value={form.nombreCompleto}
-              onChange={(e) => setForm({ ...form, nombreCompleto: e.target.value })}
-            />
-          </label>
-          <label>
-            Documento
-            <input required value={form.documento} onChange={(e) => setForm({ ...form, documento: e.target.value })} />
-          </label>
-          <label>
-            Teléfono
-            <input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
-          </label>
-          <label>
-            Tipo
-            <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as TipoPersona })}>
-              {Object.entries(tipoPersonaLabels).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Empresa / Área
-            <input value={form.empresa} onChange={(e) => setForm({ ...form, empresa: e.target.value })} />
-          </label>
-          <label>
-            Contacto / Motivo
-            <input
-              value={form.motivoVisita}
-              onChange={(e) => setForm({ ...form, motivoVisita: e.target.value })}
-            />
-          </label>
-          <button className="primary" type="submit" disabled={loading}>
-            Guardar persona
-          </button>
-        </form>
-      </div>
-
-      <div className="panel">
-        <div className="panel-title">Personas registradas</div>
-        <div className="table">
-          <div className="table-header">
-            <span>Nombre</span>
-            <span>Tipo</span>
-            <span>Documento</span>
-          </div>
-          {personas.map((p) => (
-            <div key={p.id} className="table-row">
-              <span>{p.nombreCompleto}</span>
-              <span>{tipoPersonaLabels[p.tipo]}</span>
-              <span>{p.documento}</span>
-            </div>
-          ))}
-          {!personas.length && <p className="muted small">No hay personas registradas aún.</p>}
+    <div className="panel">
+      <div className="panel-title">Personas registradas</div>
+      <p className="muted small">
+        Las personas ahora se crean automáticamente al registrar un usuario. No necesitas darlas de alta aparte; quedan
+        vinculadas 1 a 1 con su usuario.
+      </p>
+      <div className="table" style={{ marginTop: "1rem" }}>
+        <div className="table-header">
+          <span>Nombre</span>
+          <span>Tipo</span>
+          <span>Documento</span>
         </div>
+        {personas.map((p) => (
+          <div key={p.id} className="table-row">
+            <span>{p.nombreCompleto}</span>
+            <span>{tipoPersonaLabels[p.tipo]}</span>
+            <span>{p.documento}</span>
+          </div>
+        ))}
+        {!personas.length && <p className="muted small">No hay personas registradas aún.</p>}
       </div>
     </div>
   );
