@@ -290,6 +290,21 @@ button:disabled {
   margin-bottom: 0.5rem;
 }
 
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #253241;
+  border-top-color: #4fc3f7;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0.5rem auto 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .status {
   position: fixed;
   bottom: 1rem;

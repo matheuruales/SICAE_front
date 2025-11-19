@@ -172,6 +172,13 @@ export function QrScanner({ onRead }: Props) {
         )}
       </div>
 
+      {active && state === "pending" && (
+        <div className="scanner-fallback" style={{ marginTop: "10px" }}>
+          <p className="muted small">Activando cámara...</p>
+          <div className="spinner" aria-label="Cargando cámara" />
+        </div>
+      </div>
+
       {active && state === "ready" ? (
         <div className="scanner">
           <video
