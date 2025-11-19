@@ -17,6 +17,8 @@ export function QrScanner({ onRead }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [state, setState] = useState<DetectorState>("pending");
   const [manual, setManual] = useState("");
+  const lastCodeRef = useRef<string>("");
+  const lastScanTimeRef = useRef<number>(0);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -48,7 +50,13 @@ export function QrScanner({ onRead }: Props) {
           try {
             const codes = await detector.detect(canvas);
             if (codes.length > 0) {
-              onRead(codes[0].rawValue);
+                const now = Date.now();
+                const code = codes[0].rawValue;
+                if (code !== lastCodeRef.current || now - lastScanTimeRef.current > 3000) {
+                  lastCodeRef.current = code;
+                  lastScanTimeRef.current = now;
+                  onRead(code);
+                }
             }
           } catch (err) {
             console.error(err);
@@ -62,13 +70,14 @@ export function QrScanner({ onRead }: Props) {
 
     startScanner();
 
-    return () => {
-      if (interval) window.clearInterval(interval);
-      if (stream) {
-        stream.getTracks().forEach((t) => t.stop());
-      }
-    };
-  }, [onRead]);
+      return () => {
+        if (interval) window.clearInterval(interval);
+        if (stream) {
+          stream.getTracks().forEach((t) => t.stop());
+        }
+        lastCodeRef.current = "";
+      };
+    }, [onRead]);
 
   return (
     <div className="panel">
@@ -79,6 +88,10 @@ export function QrScanner({ onRead }: Props) {
       {state === "ready" ? (
         <div className="scanner">
           <video ref={videoRef} muted playsInline className="video-feed" />
+          <div className="scan-overlay">
+            <div className="scan-box" />
+            <p className="muted small center">Alinea el QR dentro del cuadro</p>
+          </div>
           <canvas ref={canvasRef} className="hidden-canvas" />
         </div>
       ) : (

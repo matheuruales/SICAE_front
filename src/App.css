@@ -262,6 +262,29 @@ button:disabled {
   display: none;
 }
 
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+}
+
+.scan-box {
+  width: 70%;
+  max-width: 320px;
+  height: 240px;
+  border: 2px solid #4fc3f7;
+  border-radius: 12px;
+  box-shadow: 0 0 25px rgba(79, 195, 247, 0.25);
+}
+
+.scan-overlay .center {
+  margin-top: 0.5rem;
+}
+
 .scanner-fallback input {
   width: 100%;
   margin-bottom: 0.5rem;
