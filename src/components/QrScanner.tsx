@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import jsQR from "jsqr";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 
 type Props = {
   onRead: (value: string) => void;
@@ -16,12 +16,10 @@ export function QrScanner({ onRead }: Props) {
   const lastScanTimeRef = useRef<number>(0);
   const [active, setActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const animationFrameRef = useRef<number>(0);
+  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  const stopRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    let stream: MediaStream | null = null;
-    let running = true;
-
     async function startScanner() {
       // Proteger por si se ejecuta en SSR (Next.js) o navegador raro
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -30,91 +28,37 @@ export function QrScanner({ onRead }: Props) {
       }
 
       try {
-        // Pedir cámara trasera si existe
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { 
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-        });
-
         const video = videoRef.current;
         if (!video) return;
 
-        video.srcObject = stream;
+        const codeReader = new BrowserMultiFormatReader();
+        codeReaderRef.current = codeReader;
 
-        // Esperar a que el video tenga metadata
-        await new Promise<void>((resolve, reject) => {
-          if (video.readyState >= 2) return resolve();
-          
-          const onLoaded = () => {
-            video.removeEventListener('loadedmetadata', onLoaded);
-            video.removeEventListener('error', onError);
-            resolve();
-          };
-          
-          const onError = () => {
-            video.removeEventListener('loadedmetadata', onLoaded);
-            video.removeEventListener('error', onError);
-            reject(new Error("Error cargando video"));
-          };
-          
-          video.addEventListener('loadedmetadata', onLoaded);
-          video.addEventListener('error', onError);
-        });
-
-        await video.play();
-        setState("ready");
-
-        const tick = () => {
-          if (!running) return;
-
-          const video = videoRef.current;
-          const canvas = canvasRef.current;
-          if (!video || !canvas || video.videoWidth === 0 || video.videoHeight === 0) {
-            animationFrameRef.current = requestAnimationFrame(tick);
-            return;
-          }
-
-          // Asegurar que el canvas tenga el tamaño correcto
-          if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-          }
-
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            animationFrameRef.current = requestAnimationFrame(tick);
-            return;
-          }
-
-          // Dibujar frame actual del video en el canvas
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-          try {
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const result = jsQR(imageData.data, imageData.width, imageData.height);
-
-            if (result?.data) {
+        await codeReader.decodeFromVideoDevice(
+          undefined,
+          video,
+          (result, err) => {
+            if (result) {
               const now = Date.now();
-              const code = result.data;
-
-              // Evitar disparar el mismo código muchas veces seguidas
-              if (code !== lastCodeRef.current || now - lastScanTimeRef.current > 3000) {
+              const code = result.getText();
+              if (code && (code !== lastCodeRef.current || now - lastScanTimeRef.current > 3000)) {
                 lastCodeRef.current = code;
                 lastScanTimeRef.current = now;
                 onRead(code);
               }
             }
-          } catch (err) {
-            console.error("Error leyendo QR:", err);
+            if (err && (err as any).name !== "NotFoundException") {
+              console.error("Error leyendo QR:", err);
+            }
+            if (state !== "ready") {
+              setState("ready");
+            }
           }
+        );
 
-          animationFrameRef.current = requestAnimationFrame(tick);
+        stopRef.current = () => {
+          (codeReader as any).reset?.();
         };
-
-        animationFrameRef.current = requestAnimationFrame(tick);
       } catch (err) {
         console.error("No se pudo iniciar la cámara", err);
         setState("unsupported");
@@ -127,16 +71,11 @@ export function QrScanner({ onRead }: Props) {
     }
 
     return () => {
-      running = false;
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (stream) {
-        stream.getTracks().forEach((t) => t.stop());
-      }
+      stopRef.current?.();
+      (codeReaderRef.current as any)?.reset?.();
       lastCodeRef.current = "";
     };
-  }, [onRead, active]);
+  }, [onRead, active, state]);
 
   const handleManualSubmit = () => {
     const value = manual.trim();
