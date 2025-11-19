@@ -30,7 +30,7 @@ export function CredencialesPage() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${data}`;
   }, [ultCredencial]);
 
-  const selectablePersonas = user?.rol === "ADMIN" || user?.rol === "SEGURIDAD" ? personas : personas; // si tuviéramos vínculo persona-usuario, aquí se filtraría
+  const selectablePersonas = user?.rol === "ADMIN" || user?.rol === "SEGURIDAD" ? personas : personas;
 
   return (
     <div className="grid two-columns">

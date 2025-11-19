@@ -124,9 +124,23 @@ export function SicaeProvider({ children }: { children: ReactNode }) {
         listarEventos(token),
         listarPuntos(token),
       ]);
-      setPersonas(personasRes);
-      setCredenciales(credencialesRes);
-      setEventos(eventosRes);
+      const personasFiltered =
+        user && user.rol !== "ADMIN" && user.rol !== "SEGURIDAD"
+          ? personasRes.filter((p) => p.id === user.personaId)
+          : personasRes;
+      setPersonas(personasFiltered);
+
+      const credsFiltered =
+        user && user.rol !== "ADMIN" && user.rol !== "SEGURIDAD"
+          ? credencialesRes.filter((c) => c.personaId === user.personaId)
+          : credencialesRes;
+      setCredenciales(credsFiltered);
+
+      setEventos(
+        user && user.rol !== "ADMIN" && user.rol !== "SEGURIDAD"
+          ? eventosRes.filter((e) => e.personaId === user.personaId)
+          : eventosRes
+      );
       setPuntos(puntosRes);
       if (user?.rol === "ADMIN") {
         const usuariosRes = await listUsuarios(token);

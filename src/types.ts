@@ -82,6 +82,7 @@ export interface AuthResponse {
   nombreCompleto: string;
   correo: string;
   rol: Rol;
+  personaId: string | null;
 }
 
 export interface UsuarioListado {
