@@ -10,7 +10,7 @@ const tipoPersonaLabels: Record<TipoPersona, string> = {
 };
 
 export function PersonasPage() {
-  const { personas, crearPersona, loading } = useSicae();
+  const { personas, crearPersona, loading, user } = useSicae();
   const [form, setForm] = useState({
     nombreCompleto: "",
     documento: "",
@@ -20,6 +20,15 @@ export function PersonasPage() {
     personaContacto: "",
     motivoVisita: "",
   });
+
+  if (user?.rol !== "ADMIN") {
+    return (
+      <div className="panel">
+        <div className="panel-title">Acceso restringido</div>
+        <p className="muted small">Solo los administradores pueden registrar personas.</p>
+      </div>
+    );
+  }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

@@ -12,6 +12,15 @@ export function UsuariosPage() {
     rol: "ADMIN" as Rol,
   });
 
+  if (user?.rol !== "ADMIN") {
+    return (
+      <div className="panel">
+        <div className="panel-title">Acceso restringido</div>
+        <p className="muted small">Solo los administradores pueden gestionar usuarios.</p>
+      </div>
+    );
+  }
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     registrarUsuario(form);

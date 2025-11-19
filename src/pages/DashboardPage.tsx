@@ -14,6 +14,11 @@ export function DashboardPage() {
     [personas.length, credenciales, puntos.length, eventos.length]
   );
 
+  const personaMap = useMemo(
+    () => personas.reduce<Record<string, string>>((acc, p) => ({ ...acc, [p.id]: p.nombreCompleto }), {}),
+    [personas]
+  );
+
   const recientes = useMemo(() => eventos.slice(0, 6), [eventos]);
 
   return (
@@ -35,12 +40,14 @@ export function DashboardPage() {
         <div className="table">
           <div className="table-header">
             <span>Fecha</span>
+            <span>Persona</span>
             <span>Resultado</span>
             <span>Motivo</span>
           </div>
           {recientes.map((ev) => (
             <div key={ev.id} className={`table-row ${ev.resultado === "PERMITIDO" ? "success" : "error"}`}>
               <span>{new Date(ev.fechaHora).toLocaleString()}</span>
+              <span>{ev.personaId ? personaMap[ev.personaId] ?? "N/D" : "N/D"}</span>
               <span>{ev.resultado}</span>
               <span>{ev.motivo}</span>
             </div>

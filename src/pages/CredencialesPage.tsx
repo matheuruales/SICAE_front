@@ -4,7 +4,7 @@ import { useSicae } from "../context/SicaeContext";
 import type { Credencial } from "../types";
 
 export function CredencialesPage() {
-  const { personas, credenciales, emitirQr, loading } = useSicae();
+  const { personas, credenciales, emitirQr, loading, user } = useSicae();
   const [personaSeleccionada, setPersonaSeleccionada] = useState("");
   const [ultCredencial, setUltCredencial] = useState<Credencial | null>(null);
 
@@ -21,16 +21,23 @@ export function CredencialesPage() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${data}`;
   }, [ultCredencial]);
 
+  const selectablePersonas = user?.rol === "ADMIN" || user?.rol === "SEGURIDAD" ? personas : personas; // si tuviéramos vínculo persona-usuario, aquí se filtraría
+
   return (
     <div className="grid two-columns">
       <div className="panel">
         <div className="panel-title">Emitir credencial QR de un solo uso</div>
+        <p className="muted small">
+          {user?.rol === "ADMIN"
+            ? "Selecciona a la persona y emite un QR de un solo uso."
+            : "Genera tu QR temporal (vigencia 1 minuto)."}
+        </p>
         <form className="grid" onSubmit={handleSubmit}>
           <label>
             Persona
             <select required value={personaSeleccionada} onChange={(e) => setPersonaSeleccionada(e.target.value)}>
               <option value="">Selecciona...</option>
-              {personas.map((p) => (
+              {selectablePersonas.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.nombreCompleto}
                 </option>

@@ -1,19 +1,47 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo } from "react";
 import { useSicae } from "../context/SicaeContext";
 
 export function Layout() {
   const { user, logout, loading, status } = useSicae();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const links = [
-    { to: "/", label: "Dashboard" },
-    { to: "/personas", label: "Personas" },
-    { to: "/credenciales", label: "Credenciales QR" },
-    { to: "/lector", label: "Lector QR" },
-    { to: "/puntos", label: "Puntos de acceso" },
-    { to: "/eventos", label: "Eventos / Reportes" },
-    { to: "/usuarios", label: "Usuarios" },
-  ];
+  const links = useMemo(() => {
+    if (!user) return [];
+    const base = [
+      { to: "/credenciales", label: "Credenciales QR" },
+      { to: "/lector", label: "Lector QR" },
+    ];
+    if (user.rol === "ADMIN") {
+      return [
+        { to: "/", label: "Dashboard" },
+        { to: "/personas", label: "Personas" },
+        ...base,
+        { to: "/puntos", label: "Puntos de acceso" },
+        { to: "/eventos", label: "Eventos / Reportes" },
+        { to: "/usuarios", label: "Usuarios" },
+      ];
+    }
+    if (user.rol === "SEGURIDAD") {
+      return [
+        { to: "/", label: "Dashboard" },
+        ...base,
+        { to: "/eventos", label: "Eventos / Reportes" },
+      ];
+    }
+    // VISITANTE u otros: solo generar QR
+    return base;
+  }, [user]);
+
+  useEffect(() => {
+    if (user && links.length) {
+      const allowed = links.some((l) => l.to === location.pathname);
+      if (!allowed) {
+        navigate(links[0].to, { replace: true });
+      }
+    }
+  }, [user, links, location.pathname, navigate]);
 
   return (
     <div className="shell">

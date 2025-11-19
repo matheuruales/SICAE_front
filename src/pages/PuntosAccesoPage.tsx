@@ -11,13 +11,22 @@ const tipoOptions: Record<TipoPunto, string> = {
 };
 
 export function PuntosAccesoPage() {
-  const { puntos, crearPunto, loading } = useSicae();
+  const { puntos, crearPunto, loading, user } = useSicae();
   const [form, setForm] = useState({
     nombre: "",
     ubicacion: "",
     tipo: "PUERTA" as TipoPunto,
     activo: true,
   });
+
+  if (user?.rol !== "ADMIN") {
+    return (
+      <div className="panel">
+        <div className="panel-title">Acceso restringido</div>
+        <p className="muted small">Solo los administradores pueden registrar puntos de acceso.</p>
+      </div>
+    );
+  }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

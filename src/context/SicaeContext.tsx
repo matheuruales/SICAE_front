@@ -30,12 +30,9 @@ import {
   validarQr,
 } from "../api/sicae";
 
-type AuthMode = "login" | "register";
-
 type SicaeContextType = {
   user: AuthResponse | null;
   token: string;
-  authMode: AuthMode;
   personas: Persona[];
   credenciales: Credencial[];
   eventos: EventoAcceso[];
@@ -44,8 +41,7 @@ type SicaeContextType = {
   loading: boolean;
   status: string | null;
   ready: boolean;
-  setAuthMode: (mode: AuthMode) => void;
-  authenticate: (params: { mode: AuthMode; nombreCompleto?: string; correo: string; password: string; rol?: Rol }) => Promise<void>;
+  authenticate: (params: { correo: string; password: string }) => Promise<void>;
   logout: () => void;
   refreshData: () => Promise<void>;
   crearPersona: (data: Parameters<typeof crearPersona>[0]) => Promise<void>;
@@ -60,7 +56,6 @@ const SicaeContext = createContext<SicaeContextType | undefined>(undefined);
 export function SicaeProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthResponse | null>(null);
   const [token, setToken] = useState("");
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [credenciales, setCredenciales] = useState<Credencial[]>([]);
   const [eventos, setEventos] = useState<EventoAcceso[]>([]);
@@ -93,14 +88,11 @@ export function SicaeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const authenticate: SicaeContextType["authenticate"] = useCallback(
-    async ({ mode, nombreCompleto, correo, password, rol }) => {
+    async ({ correo, password }) => {
       setLoading(true);
       setStatus(null);
       try {
-        const resp =
-          mode === "login"
-            ? await login(correo, password)
-            : await register(nombreCompleto ?? "", correo, password, rol ?? "ADMIN");
+        const resp = await login(correo, password);
         saveSession(resp);
         setStatus(`Bienvenido, ${resp.nombreCompleto}`);
       } catch (err) {
@@ -237,8 +229,6 @@ export function SicaeProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       token,
-      authMode,
-      setAuthMode,
       personas,
       credenciales,
       eventos,
@@ -259,7 +249,6 @@ export function SicaeProvider({ children }: { children: ReactNode }) {
     [
       user,
       token,
-      authMode,
       personas,
       credenciales,
       eventos,
