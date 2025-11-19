@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useSicae } from "../context/SicaeContext";
 import type { Credencial } from "../types";
 
@@ -7,6 +7,15 @@ export function CredencialesPage() {
   const { personas, credenciales, emitirQr, loading, user } = useSicae();
   const [personaSeleccionada, setPersonaSeleccionada] = useState("");
   const [ultCredencial, setUltCredencial] = useState<Credencial | null>(null);
+
+  // Para roles que solo pueden generar su propio QR, autoselecciona la primera persona disponible
+  useEffect(() => {
+    if (user && user.rol !== "ADMIN" && user.rol !== "SEGURIDAD") {
+      if (personas.length > 0) {
+        setPersonaSeleccionada(personas[0].id);
+      }
+    }
+  }, [user, personas]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -30,20 +39,28 @@ export function CredencialesPage() {
         <p className="muted small">
           {user?.rol === "ADMIN"
             ? "Selecciona a la persona y emite un QR de un solo uso."
+            : user?.rol === "SEGURIDAD"
+            ? "Genera tu QR temporal y controla accesos."
             : "Genera tu QR temporal (vigencia 1 minuto)."}
         </p>
         <form className="grid" onSubmit={handleSubmit}>
-          <label>
-            Persona
-            <select required value={personaSeleccionada} onChange={(e) => setPersonaSeleccionada(e.target.value)}>
-              <option value="">Selecciona...</option>
-              {selectablePersonas.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombreCompleto}
-                </option>
-              ))}
-            </select>
-          </label>
+          {user?.rol === "ADMIN" || user?.rol === "SEGURIDAD" ? (
+            <label>
+              Persona
+              <select required value={personaSeleccionada} onChange={(e) => setPersonaSeleccionada(e.target.value)}>
+                <option value="">Selecciona...</option>
+                {selectablePersonas.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombreCompleto}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <p className="muted small">
+              Se generará el QR para tu registro. Si no apareces en la lista, solicita alta al administrador.
+            </p>
+          )}
           <button className="primary" type="submit" disabled={!personaSeleccionada || loading}>
             Generar QR (1 min)
           </button>

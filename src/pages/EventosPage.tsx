@@ -15,7 +15,7 @@ export function EventosPage() {
     return eventos.filter((e) => (resultado ? e.resultado === resultado : true));
   }, [eventos, resultado]);
 
-  if (user?.rol === "VISITANTE") {
+  if (user?.rol !== "ADMIN" && user?.rol !== "SEGURIDAD") {
     return (
       <div className="panel">
         <div className="panel-title">Acceso restringido</div>

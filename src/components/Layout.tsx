@@ -9,15 +9,16 @@ export function Layout() {
 
   const links = useMemo(() => {
     if (!user) return [];
-    const base = [
-      { to: "/credenciales", label: "Credenciales QR" },
-      { to: "/lector", label: "Lector QR" },
-    ];
+    // Roles:
+    // ADMIN: todo
+    // SEGURIDAD: dashboard, credenciales (propias), lector, eventos
+    // Otros (VISITANTE/EMPLEADO/CONTRATISTA): solo credenciales propias
     if (user.rol === "ADMIN") {
       return [
         { to: "/", label: "Dashboard" },
         { to: "/personas", label: "Personas" },
-        ...base,
+        { to: "/credenciales", label: "Credenciales QR" },
+        { to: "/lector", label: "Lector QR" },
         { to: "/puntos", label: "Puntos de acceso" },
         { to: "/eventos", label: "Eventos / Reportes" },
         { to: "/usuarios", label: "Usuarios" },
@@ -26,12 +27,13 @@ export function Layout() {
     if (user.rol === "SEGURIDAD") {
       return [
         { to: "/", label: "Dashboard" },
-        ...base,
+        { to: "/credenciales", label: "Credenciales QR" },
+        { to: "/lector", label: "Lector QR" },
         { to: "/eventos", label: "Eventos / Reportes" },
       ];
     }
-    // VISITANTE u otros: solo generar QR
-    return base;
+    // VISITANTE / EMPLEADO / CONTRATISTA: solo generar su QR
+    return [{ to: "/credenciales", label: "Credenciales QR" }];
   }, [user]);
 
   useEffect(() => {

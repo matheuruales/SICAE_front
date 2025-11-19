@@ -3,7 +3,7 @@ import { useSicae } from "../context/SicaeContext";
 import { QrScanner } from "../components/QrScanner";
 
 export function LectorPage() {
-  const { validarQr, puntos, status } = useSicae();
+  const { validarQr, puntos, status, user } = useSicae();
   const [puntoAccesoId, setPuntoAccesoId] = useState("");
   const [ipLector, setIpLector] = useState("");
 
@@ -19,6 +19,15 @@ export function LectorPage() {
   );
 
   const puntosSafe = puntos ?? [];
+
+  if (user?.rol !== "ADMIN" && user?.rol !== "SEGURIDAD") {
+    return (
+      <div className="panel">
+        <div className="panel-title">Acceso restringido</div>
+        <p className="muted small">Solo Seguridad o Administrador pueden usar el lector.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="grid two-columns">
