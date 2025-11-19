@@ -1,0 +1,76 @@
+import { FormEvent, useMemo, useState } from "react";
+import { useSicae } from "../context/SicaeContext";
+import { Credencial } from "../types";
+
+export function CredencialesPage() {
+  const { personas, credenciales, emitirQr, loading } = useSicae();
+  const [personaSeleccionada, setPersonaSeleccionada] = useState("");
+  const [ultCredencial, setUltCredencial] = useState<Credencial | null>(null);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!personaSeleccionada) return;
+    const cred = await emitirQr(personaSeleccionada);
+    if (cred) setUltCredencial(cred);
+  };
+
+  const qrPreview = useMemo(() => {
+    if (!ultCredencial?.qrToken?.code) return null;
+    const data = encodeURIComponent(ultCredencial.qrToken.code);
+    return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${data}`;
+  }, [ultCredencial]);
+
+  return (
+    <div className="grid two-columns">
+      <div className="panel">
+        <div className="panel-title">Emitir credencial QR de un solo uso</div>
+        <form className="grid" onSubmit={handleSubmit}>
+          <label>
+            Persona
+            <select required value={personaSeleccionada} onChange={(e) => setPersonaSeleccionada(e.target.value)}>
+              <option value="">Selecciona...</option>
+              {personas.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombreCompleto}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="primary" type="submit" disabled={!personaSeleccionada || loading}>
+            Generar QR (1 min)
+          </button>
+        </form>
+        {ultCredencial && (
+          <div className="qr-preview">
+            <p className="muted small">
+              Código: <strong>{ultCredencial.qrToken.code}</strong>
+            </p>
+            {qrPreview && <img src={qrPreview} alt="QR generado" />}
+            <p className="muted small">
+              Expira: {new Date(ultCredencial.qrToken.expiraEn).toLocaleTimeString()} · Estado: {ultCredencial.estado}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="panel">
+        <div className="panel-title">Credenciales emitidas</div>
+        <div className="table">
+          <div className="table-header">
+            <span>Persona</span>
+            <span>Estado</span>
+            <span>Expira</span>
+          </div>
+          {credenciales.map((c) => (
+            <div key={c.id} className="table-row">
+              <span>{personas.find((p) => p.id === c.personaId)?.nombreCompleto ?? "N/D"}</span>
+              <span>{c.estado}</span>
+              <span>{new Date(c.expiraEn).toLocaleTimeString()}</span>
+            </div>
+          ))}
+          {!credenciales.length && <p className="muted small">Aún no hay credenciales emitidas.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
