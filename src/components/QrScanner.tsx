@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 
 type Props = {
   onRead: (value: string) => void;
@@ -20,7 +20,8 @@ export function QrScanner({ onRead }: Props) {
 
   const stopScanner = useCallback(() => {
     stopRef.current?.();
-    codeReaderRef.current?.reset();
+    const reader = codeReaderRef.current as unknown as { reset?: () => void } | null;
+    reader?.reset?.();
     const stream = videoRef.current?.srcObject as MediaStream | null;
     stream?.getTracks().forEach((t) => t.stop());
     if (videoRef.current) {
@@ -60,7 +61,7 @@ export function QrScanner({ onRead }: Props) {
       const codeReader = new BrowserMultiFormatReader();
       codeReaderRef.current = codeReader;
 
-      await codeReader.decodeFromConstraints(
+      const controls: IScannerControls | undefined = await codeReader.decodeFromConstraints(
         {
           video: {
             facingMode: { ideal: "environment" },
@@ -84,7 +85,9 @@ export function QrScanner({ onRead }: Props) {
       setState("ready");
 
       stopRef.current = () => {
-        codeReader.reset();
+        controls?.stop();
+        const reader = codeReader as unknown as { reset?: () => void };
+        reader.reset?.();
       };
     } catch (err) {
       console.error("No se pudo iniciar la cámara", err);
