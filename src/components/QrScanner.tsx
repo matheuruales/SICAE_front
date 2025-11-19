@@ -22,7 +22,8 @@ export function QrScanner({ onRead }: Props) {
 
   useEffect(() => {
     let stream: MediaStream | null = null;
-    let interval: number | undefined;
+    let running = true;
+    let detector: typeof BarcodeDetector.prototype | null = null;
 
     async function startScanner() {
       if (typeof BarcodeDetector === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -31,37 +32,56 @@ export function QrScanner({ onRead }: Props) {
       }
 
       try {
-        const detector = new BarcodeDetector({ formats: ["qr_code"] });
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        detector = new BarcodeDetector({ formats: ["qr_code"] });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
         if (!videoRef.current) return;
         videoRef.current.srcObject = stream;
+
+        await new Promise<void>((resolve) => {
+          if (!videoRef.current) return resolve();
+          const video = videoRef.current;
+          if (video.readyState >= 2) return resolve();
+          video.onloadedmetadata = () => resolve();
+        });
+
+        if (!videoRef.current) return;
         await videoRef.current.play();
         setState("ready");
 
-        interval = window.setInterval(async () => {
-          if (!videoRef.current || !canvasRef.current) return;
+        const tick = async () => {
+          if (!running || !videoRef.current || !canvasRef.current || !detector) return;
           const video = videoRef.current;
+          if (video.videoWidth === 0 || video.videoHeight === 0) {
+            requestAnimationFrame(tick);
+            return;
+          }
           const canvas = canvasRef.current;
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
           const ctx = canvas.getContext("2d");
-          if (!ctx) return;
+          if (!ctx) {
+            requestAnimationFrame(tick);
+            return;
+          }
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           try {
             const codes = await detector.detect(canvas);
             if (codes.length > 0) {
-                const now = Date.now();
-                const code = codes[0].rawValue;
-                if (code !== lastCodeRef.current || now - lastScanTimeRef.current > 3000) {
-                  lastCodeRef.current = code;
-                  lastScanTimeRef.current = now;
-                  onRead(code);
-                }
+              const now = Date.now();
+              const code = codes[0].rawValue;
+              if (code !== lastCodeRef.current || now - lastScanTimeRef.current > 3000) {
+                lastCodeRef.current = code;
+                lastScanTimeRef.current = now;
+                onRead(code);
+              }
             }
           } catch (err) {
             console.error(err);
           }
-        }, 800);
+          requestAnimationFrame(tick);
+        };
+
+        requestAnimationFrame(tick);
       } catch (err) {
         console.error("No se pudo iniciar la cámara", err);
         setState("unsupported");
@@ -70,14 +90,14 @@ export function QrScanner({ onRead }: Props) {
 
     startScanner();
 
-      return () => {
-        if (interval) window.clearInterval(interval);
-        if (stream) {
-          stream.getTracks().forEach((t) => t.stop());
-        }
-        lastCodeRef.current = "";
-      };
-    }, [onRead]);
+    return () => {
+      running = false;
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+      }
+      lastCodeRef.current = "";
+    };
+  }, [onRead]);
 
   return (
     <div className="panel">
