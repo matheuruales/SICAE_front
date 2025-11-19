@@ -16,6 +16,7 @@ export function QrScanner({ onRead }: Props) {
   const lastScanTimeRef = useRef<number>(0);
   const [active, setActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const animationFrameRef = useRef<number>(0);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -31,7 +32,11 @@ export function QrScanner({ onRead }: Props) {
       try {
         // Pedir cámara trasera si existe
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
+          video: { 
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
         });
 
         const video = videoRef.current;
@@ -40,9 +45,23 @@ export function QrScanner({ onRead }: Props) {
         video.srcObject = stream;
 
         // Esperar a que el video tenga metadata
-        await new Promise<void>((resolve) => {
+        await new Promise<void>((resolve, reject) => {
           if (video.readyState >= 2) return resolve();
-          video.onloadedmetadata = () => resolve();
+          
+          const onLoaded = () => {
+            video.removeEventListener('loadedmetadata', onLoaded);
+            video.removeEventListener('error', onError);
+            resolve();
+          };
+          
+          const onError = () => {
+            video.removeEventListener('loadedmetadata', onLoaded);
+            video.removeEventListener('error', onError);
+            reject(new Error("Error cargando video"));
+          };
+          
+          video.addEventListener('loadedmetadata', onLoaded);
+          video.addEventListener('error', onError);
         });
 
         await video.play();
@@ -53,27 +72,24 @@ export function QrScanner({ onRead }: Props) {
 
           const video = videoRef.current;
           const canvas = canvasRef.current;
-          if (!video || !canvas) {
-            requestAnimationFrame(tick);
+          if (!video || !canvas || video.videoWidth === 0 || video.videoHeight === 0) {
+            animationFrameRef.current = requestAnimationFrame(tick);
             return;
           }
 
-          // Si aún no está listo el video, seguir esperando
-          if (video.videoWidth === 0 || video.videoHeight === 0) {
-            requestAnimationFrame(tick);
-            return;
+          // Asegurar que el canvas tenga el tamaño correcto
+          if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
           }
-
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
 
           const ctx = canvas.getContext("2d");
           if (!ctx) {
-            requestAnimationFrame(tick);
+            animationFrameRef.current = requestAnimationFrame(tick);
             return;
           }
 
-          // Dibujar frame actual del video
+          // Dibujar frame actual del video en el canvas
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
           try {
@@ -95,10 +111,10 @@ export function QrScanner({ onRead }: Props) {
             console.error("Error leyendo QR:", err);
           }
 
-          requestAnimationFrame(tick);
+          animationFrameRef.current = requestAnimationFrame(tick);
         };
 
-        requestAnimationFrame(tick);
+        animationFrameRef.current = requestAnimationFrame(tick);
       } catch (err) {
         console.error("No se pudo iniciar la cámara", err);
         setState("unsupported");
@@ -112,6 +128,9 @@ export function QrScanner({ onRead }: Props) {
 
     return () => {
       running = false;
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
       if (stream) {
         stream.getTracks().forEach((t) => t.stop());
       }
@@ -125,6 +144,7 @@ export function QrScanner({ onRead }: Props) {
     lastCodeRef.current = value;
     lastScanTimeRef.current = Date.now();
     onRead(value);
+    setManual("");
   };
 
   return (
@@ -157,18 +177,41 @@ export function QrScanner({ onRead }: Props) {
           <video
             ref={videoRef}
             muted
+            autoPlay
             playsInline
-            // opcionalmente, autoPlay (aunque ya llamamos a play() en el código)
             className="video-feed"
+            style={{
+              width: "100%",
+              maxWidth: "500px",
+              height: "auto",
+              border: "2px solid #ccc",
+              borderRadius: "8px"
+            }}
           />
-          <div className="scan-overlay">
-            <div className="scan-box" />
-            <p className="muted small center">Alinea el QR dentro del cuadro</p>
+          <div className="scan-overlay" style={{
+            position: "relative",
+            marginTop: "10px",
+            textAlign: "center"
+          }}>
+            <div className="scan-box" style={{
+              width: "200px",
+              height: "200px",
+              border: "2px solid #007bff",
+              borderRadius: "8px",
+              margin: "0 auto",
+              position: "relative"
+            }} />
+            <p className="muted small" style={{ marginTop: "10px" }}>
+              Alinea el QR dentro del cuadro
+            </p>
           </div>
-          <canvas ref={canvasRef} className="hidden-canvas" />
+          <canvas 
+            ref={canvasRef} 
+            style={{ display: 'none' }} 
+          />
         </div>
       ) : (
-        <div className="scanner-fallback">
+        <div className="scanner-fallback" style={{ marginTop: "20px" }}>
           <p className="muted small">
             {!active
               ? "Presiona activar para iniciar la cámara."
@@ -176,15 +219,44 @@ export function QrScanner({ onRead }: Props) {
               ? "Activando cámara..."
               : "No se pudo acceder a la cámara. Usa el ingreso manual del código."}
           </p>
-          <input
-            value={manual}
-            onChange={(e) => setManual(e.target.value)}
-            placeholder="Pega aquí el QR leído"
-          />
-          <button type="button" onClick={handleManualSubmit}>
-            Validar código
-          </button>
-          {error && <p className="muted small">{error}</p>}
+          
+          {state === "unsupported" && (
+            <div style={{ marginTop: "15px" }}>
+              <input
+                value={manual}
+                onChange={(e) => setManual(e.target.value)}
+                placeholder="Pega aquí el código QR"
+                style={{
+                  width: "100%",
+                  maxWidth: "300px",
+                  padding: "8px",
+                  marginBottom: "10px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px"
+                }}
+              />
+              <button 
+                type="button" 
+                onClick={handleManualSubmit}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#007bff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer"
+                }}
+              >
+                Validar código
+              </button>
+            </div>
+          )}
+          
+          {error && (
+            <p className="muted small" style={{ color: "red", marginTop: "10px" }}>
+              Error: {error}
+            </p>
+          )}
         </div>
       )}
     </div>
