@@ -14,6 +14,8 @@ export function QrScanner({ onRead }: Props) {
   const [manual, setManual] = useState("");
   const lastCodeRef = useRef<string>("");
   const lastScanTimeRef = useRef<number>(0);
+  const [active, setActive] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -100,10 +102,13 @@ export function QrScanner({ onRead }: Props) {
       } catch (err) {
         console.error("No se pudo iniciar la cámara", err);
         setState("unsupported");
+        setError((err as Error).message);
       }
     }
 
-    startScanner();
+    if (active) {
+      startScanner();
+    }
 
     return () => {
       running = false;
@@ -112,7 +117,7 @@ export function QrScanner({ onRead }: Props) {
       }
       lastCodeRef.current = "";
     };
-  }, [onRead]);
+  }, [onRead, active]);
 
   const handleManualSubmit = () => {
     const value = manual.trim();
@@ -129,7 +134,25 @@ export function QrScanner({ onRead }: Props) {
         Se usa como única credencial: apunte la cámara al código generado o ingréselo manualmente.
       </p>
 
-      {state === "ready" ? (
+      <div className="scanner-actions">
+        {!active ? (
+          <button type="button" onClick={() => setActive(true)}>
+            Activar cámara
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setActive(false);
+              setState("pending");
+            }}
+          >
+            Detener cámara
+          </button>
+        )}
+      </div>
+
+      {active && state === "ready" ? (
         <div className="scanner">
           <video
             ref={videoRef}
@@ -147,7 +170,9 @@ export function QrScanner({ onRead }: Props) {
       ) : (
         <div className="scanner-fallback">
           <p className="muted small">
-            {state === "pending"
+            {!active
+              ? "Presiona activar para iniciar la cámara."
+              : state === "pending"
               ? "Activando cámara..."
               : "No se pudo acceder a la cámara. Usa el ingreso manual del código."}
           </p>
@@ -159,6 +184,7 @@ export function QrScanner({ onRead }: Props) {
           <button type="button" onClick={handleManualSubmit}>
             Validar código
           </button>
+          {error && <p className="muted small">{error}</p>}
         </div>
       )}
     </div>
