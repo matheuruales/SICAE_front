@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSicae } from "../context/SicaeContext";
-import { ResultadoAcceso } from "../types";
+import type { ResultadoAcceso } from "../types";
 
 export function EventosPage() {
   const { eventos } = useSicae();

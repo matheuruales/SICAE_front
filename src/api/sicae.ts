@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import {
+import type {
   AuthResponse,
   Credencial,
   EventoAcceso,

@@ -1,7 +1,8 @@
-import { FormEvent, useEffect, useState } from "react";
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { Rol } from "../types";
 import { useSicae } from "../context/SicaeContext";
-import { Rol } from "../types";
 
 export function AuthPage() {
   const { authMode, setAuthMode, authenticate, user, loading, status } = useSicae();

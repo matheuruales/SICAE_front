@@ -1,6 +1,7 @@
-import { FormEvent, useState } from "react";
+import type { FormEvent } from "react";
+import { useState } from "react";
 import { useSicae } from "../context/SicaeContext";
-import { TipoPersona } from "../types";
+import type { TipoPersona } from "../types";
 
 const tipoPersonaLabels: Record<TipoPersona, string> = {
   EMPLEADO: "Empleado",

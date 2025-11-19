@@ -1,6 +1,7 @@
-import { FormEvent, useMemo, useState } from "react";
+import type { FormEvent } from "react";
+import { useMemo, useState } from "react";
 import { useSicae } from "../context/SicaeContext";
-import { Credencial } from "../types";
+import type { Credencial } from "../types";
 
 export function CredencialesPage() {
   const { personas, credenciales, emitirQr, loading } = useSicae();

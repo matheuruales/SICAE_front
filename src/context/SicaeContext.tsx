@@ -1,13 +1,13 @@
 import {
   createContext,
-  ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
-import {
+import type { ReactNode } from "react";
+import type {
   AuthResponse,
   Credencial,
   EventoAcceso,
