@@ -1,6 +1,7 @@
-import { FormEvent, useState } from "react";
+import type { FormEvent } from "react";
+import { useState } from "react";
 import { useSicae } from "../context/SicaeContext";
-import { TipoPunto } from "../types";
+import type { TipoPunto } from "../types";
 
 const tipoOptions: Record<TipoPunto, string> = {
   PUERTA: "Puerta",

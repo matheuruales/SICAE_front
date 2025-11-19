@@ -1,6 +1,7 @@
-import { FormEvent, useState } from "react";
+import type { FormEvent } from "react";
+import { useState } from "react";
 import { useSicae } from "../context/SicaeContext";
-import { Rol } from "../types";
+import type { Rol } from "../types";
 
 export function UsuariosPage() {
   const { usuarios, user, registrarUsuario } = useSicae();
